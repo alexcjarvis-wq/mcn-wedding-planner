@@ -1,0 +1,19 @@
+[build]
+  functions = "netlify/functions"
+
+[dev]
+  command = "npm run dev"
+  targetPort = 3000
+  port = 8889
+  functions = "netlify/functions"
+  publish = "."
+
+[[redirects]]
+  from = "/api/booking/save"
+  to = "/.netlify/functions/booking-save"
+  status = 200
+
+[[redirects]]
+  from = "/api/booking/approve"
+  to = "/.netlify/functions/booking-approve"
+  status = 200

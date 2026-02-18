@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCN Manager</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Work+Sans:wght@300;400;500;600;700&family=Noto+Serif:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#d5b37b", // Soft Gold
+              "primary-vibrant": "#eea32b", // Vibrant Gold
+              "secondary": "#9C8F84", // Warm Taupe
+              "cocoa": "#3A2F28", // Deep Cocoa
+              "cream": "#F6EFE8", // Champagne Cream
+              "ivory": "#FFFEFC", // Soft Ivory
+              "background-light": "#F6EFE8",
+              "background-dark": "#1e1a14",
+              "deep-cocoa": "#3A2F28",
+              "warm-taupe": "#9C8F84",
+              "champagne": "#F6EFE8",
+              "taupe": "#9C8F84",
+            },
+            fontFamily: {
+              "display": ["Inter", "sans-serif"],
+              "work": ["Work Sans", "sans-serif"],
+              "serif": ["Noto Serif", "serif"]
+            },
+            boxShadow: {
+              'soft': '0 4px 20px -2px rgba(58, 47, 40, 0.05)',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      ::-webkit-scrollbar { width: 6px; }
+      ::-webkit-scrollbar-track { background: #F6EFE8; }
+      ::-webkit-scrollbar-thumb { background: #d5b37b; border-radius: 4px; }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .perspective { perspective: 1000px; }
+      body { font-family: 'Inter', sans-serif; }
+    </style>
+    <script type="importmap">
+    {
+      "imports": {
+        "react/": "https://esm.sh/react@^19.2.4/",
+        "react": "https://esm.sh/react@^19.2.4",
+        "recharts": "https://esm.sh/recharts@^3.7.0",
+        "react-dom/": "https://esm.sh/react-dom@^19.2.4/"
+      }
+    }
+    </script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="bg-background-light text-deep-cocoa antialiased min-h-screen">
+    <div id="root"></div>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
