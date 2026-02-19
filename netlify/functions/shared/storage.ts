@@ -1,4 +1,3 @@
-// netlify/functions/shared/storage.ts
 import { initializeApp, cert, getApps } from "firebase-admin/app";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
 
@@ -11,18 +10,15 @@ function requireEnv(name: string): string {
 function initFirebaseAdmin() {
   if (getApps().length) return;
 
-  const projectId = requireEnv("FIREBASE_PROJECT_ID");
-  const clientEmail = requireEnv("FIREBASE_CLIENT_EMAIL");
-
-  // Netlify stores this as a single line with \n inside it.
-  const privateKeyRaw = requireEnv("FIREBASE_PRIVATE_KEY");
-  const privateKey = privateKeyRaw.replace(/\\n/g, "\n");
+  const b64 = requireEnv("FIREBASE_SERVICE_ACCOUNT_B64");
+  const json = Buffer.from(b64, "base64").toString("utf8");
+  const svc = JSON.parse(json);
 
   initializeApp({
     credential: cert({
-      projectId,
-      clientEmail,
-      privateKey,
+      projectId: svc.project_id,
+      clientEmail: svc.client_email,
+      privateKey: svc.private_key,
     }),
   });
 }
@@ -32,63 +28,37 @@ export function db() {
   return getFirestore();
 }
 
-export type BookingRecord = {
-  id: string;
-  coupleName?: string;
-  venue?: string;
-  weddingDate?: string;
-  locked?: boolean;
-  lockedAt?: string | null;
-  lockedBy?: string | null;
-  status?: string;
-  data?: any;
-  updatedAt?: string;
-  createdAt?: string;
-};
-
-export async function getBooking(bookingId: string): Promise<BookingRecord | null> {
-  const snap = await db().collection("bookings").doc(bookingId).get();
+export async function getBooking(id: string) {
+  const snap = await db().collection("bookings").doc(id).get();
   if (!snap.exists) return null;
-  return snap.data() as BookingRecord;
+  return snap.data();
 }
 
-export async function upsertBooking(bookingId: string, record: Partial<BookingRecord>): Promise<BookingRecord> {
-  const ref = db().collection("bookings").doc(bookingId);
-  const nowIso = new Date().toISOString();
+export async function upsertBooking(id: string, record: any) {
+  const ref = db().collection("bookings").doc(id);
+  const now = new Date().toISOString();
 
   const existing = await ref.get();
   const createdAt =
-    existing.exists && (existing.data() as any)?.createdAt ? (existing.data() as any).createdAt : nowIso;
+    existing.exists && existing.data()?.createdAt
+      ? existing.data()?.createdAt
+      : now;
 
-  const merged: BookingRecord = {
-    id: bookingId,
+  const merged = {
+    id,
     createdAt,
-    updatedAt: nowIso,
+    updatedAt: now,
     ...record,
-    id: bookingId,
-    createdAt,
-    updatedAt: nowIso,
   };
 
   await ref.set(merged, { merge: true });
   return merged;
 }
 
-export type AuditEntry = {
-  bookingId: string;
-  actorType: "admin" | "guest";
-  actorId: string;
-  action: string;
-  diff?: any;
-  ip?: string;
-  at?: string;
-};
-
-export async function appendAudit(entry: AuditEntry): Promise<void> {
-  const nowIso = new Date().toISOString();
+export async function appendAudit(entry: any) {
   await db().collection("audit").add({
     ...entry,
-    at: entry.at || nowIso,
+    at: new Date().toISOString(),
     ts: Timestamp.now(),
   });
 }
