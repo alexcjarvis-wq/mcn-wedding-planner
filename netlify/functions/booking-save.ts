@@ -1,56 +1,82 @@
-import jwt from "jsonwebtoken"
+import type { Handler } from "@netlify/functions";
+import jwt from "jsonwebtoken";
+import { getBooking, upsertBooking, appendAudit } from "./shared/storage";
 
-function json(statusCode: number, body: any) {
-  return {
-    statusCode,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  }
+function getBearerToken(event: any): string | null {
+  const auth = event.headers?.authorization || event.headers?.Authorization;
+  if (!auth) return null;
+  if (!auth.startsWith("Bearer ")) return null;
+  return auth.replace("Bearer ", "");
 }
 
-function getToken(event: any): string | null {
-  const auth = event.headers?.authorization || event.headers?.Authorization
-  if (!auth) return null
-  if (!auth.startsWith("Bearer ")) return null
-  return auth.replace("Bearer ", "")
-}
-
-function isAdmin(event: any): boolean {
-  const secret = process.env.ADMIN_JWT_SECRET
-  if (!secret) return false
-
-  const token = getToken(event)
-  if (!token) return false
-
+function verifyAdminToken(event: any): boolean {
   try {
-    const decoded: any = jwt.verify(token, secret)
-    return decoded.role === "admin"
+    const token = getBearerToken(event);
+    if (!token) return false;
+
+    const secret = process.env.ADMIN_JWT_SECRET;
+    if (!secret) return false;
+
+    jwt.verify(token, secret);
+    return true;
   } catch {
-    return false
+    return false;
   }
 }
 
-export const handler = async (event: any) => {
-  if (event.httpMethod !== "POST") {
-    return json(405, { ok: false })
+export const handler: Handler = async (event) => {
+  try {
+    if (event.httpMethod !== "POST") {
+      return { statusCode: 405, body: "Method not allowed" };
+    }
+
+    const body = JSON.parse(event.body || "{}");
+    const { id, patch, actorType = "guest", actorId = "unknown" } = body;
+
+    if (!id) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ ok: false, error: "Missing booking id" }),
+      };
+    }
+
+    const isAdmin = verifyAdminToken(event);
+
+    const existing = await getBooking(id);
+
+    if (existing?.locked && !isAdmin) {
+      return {
+        statusCode: 403,
+        body: JSON.stringify({ ok: false, error: "Booking is locked" }),
+      };
+    }
+
+    const updated = await upsertBooking(id, {
+      ...existing,
+      ...patch,
+    });
+
+    await appendAudit({
+      bookingId: id,
+      actorType: isAdmin ? "admin" : actorType,
+      actorId,
+      action: "save",
+      diff: patch,
+      ip: event.headers["x-forwarded-for"] || "",
+    });
+
+    return {
+      statusCode: 200,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ok: true, booking: updated }),
+    };
+  } catch (err: any) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        ok: false,
+        error: err?.message || "Server error",
+      }),
+    };
   }
-
-  const body = event.body ? JSON.parse(event.body) : null
-  const data = body?.data
-
-  if (!data) {
-    return json(400, { ok: false, error: "NO_DATA" })
-  }
-
-  const locked = Boolean(data.locked)
-  const admin = isAdmin(event)
-
-  if (locked && !admin) {
-    return json(403, { ok: false, error: "LOCKED" })
-  }
-
-  return json(200, {
-    ok: true,
-    adminOverride: admin
-  })
-}
+};
