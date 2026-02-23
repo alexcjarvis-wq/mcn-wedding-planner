@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { View, WeddingBooking } from '../types';
+import { listBookings, saveBooking, createBooking } from '../services/bookingService';
 
 interface AdminDashboardProps {
   onNavigate: (v: View) => void;
@@ -22,8 +23,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout, o
   });
 
   useEffect(() => {
-    const weddings = JSON.parse(localStorage.getItem('mcn_weddings') || '[]');
-    setAllBookings(weddings);
+    const adminToken = sessionStorage.getItem('mcn_admin_token') || '';
+    if (!adminToken) {
+      alert('Admin session missing. Please log in again.');
+      onLogout();
+      return;
+    }
+
+    listBookings(adminToken, 200)
+      .then((res: any) => {
+        if (!res?.ok) {
+          alert(res?.error || 'Failed to load bookings');
+          return;
+        }
+        setAllBookings(res.items || []);
+      })
+      .catch((err) => alert(err?.message || 'Failed to load bookings'));
   }, []);
 
   const seedDemoWedding = () => {
@@ -85,41 +100,77 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout, o
       }
     };
 
-    const weddings = [...allBookings, demoWedding];
-    localStorage.setItem('mcn_weddings', JSON.stringify(weddings));
-    setAllBookings(weddings);
-    alert('Demo Wedding "Alice & Bob" added successfully at Shotton Grange! Password is "demo123"');
+    const adminToken = sessionStorage.getItem('mcn_admin_token') || '';
+    if (!adminToken) {
+      alert('Admin session missing. Please log in again.');
+      onLogout();
+      return;
+    }
+
+    createBooking({ ...demoWedding, createdBy: 'admin' }, adminToken)
+      .then((res: any) => {
+        if (!res?.ok) {
+          alert(res?.error || 'Create failed');
+          return;
+        }
+        setAllBookings((prev) => [res.booking, ...prev]);
+        alert('Demo Wedding "Alice & Bob" added successfully at Shotton Grange. Password is "demo123"');
+      })
+      .catch((err) => alert(err?.message || 'Create failed'));
   };
 
   const handleUpdatePassword = (e: React.FormEvent) => {
     e.preventDefault();
     if (!passwordModal.newPass.trim()) return;
 
-    const weddings = [...allBookings];
-    const index = weddings.findIndex(w => w.id === passwordModal.bookingId);
-    if (index === -1) return;
+    const adminToken = sessionStorage.getItem('mcn_admin_token') || '';
+    if (!adminToken) {
+      alert('Admin session missing. Please log in again.');
+      onLogout();
+      return;
+    }
 
-    weddings[index] = { 
-      ...weddings[index], 
+    const patch = {
       passwordHash: `hash_${passwordModal.newPass}`,
       failedLoginCount: 0,
-      lockedUntil: undefined
+      lockedUntil: null,
     };
-    
-    localStorage.setItem('mcn_weddings', JSON.stringify(weddings));
-    setAllBookings(weddings);
-    setPasswordModal({ ...passwordModal, isOpen: false, newPass: '' });
-    alert(`Password updated for ${passwordModal.surname} booking.`);
+
+    saveBooking(passwordModal.bookingId, patch, 'admin', 'admin', adminToken)
+      .then((res: any) => {
+        if (!res?.ok) {
+          alert(res?.error || 'Save failed');
+          return;
+        }
+        setAllBookings((prev) => prev.map((b) => (b.id === passwordModal.bookingId ? res.booking : b)));
+        setPasswordModal({ ...passwordModal, isOpen: false, newPass: '' });
+        alert(`Password updated for ${passwordModal.surname} booking.`);
+      })
+      .catch((err) => alert(err?.message || 'Save failed'));
   };
 
   const handleToggleStatus = (bookingId: string) => {
-    const weddings = [...allBookings];
-    const index = weddings.findIndex(w => w.id === bookingId);
-    if (index === -1) return;
+    const adminToken = sessionStorage.getItem('mcn_admin_token') || '';
+    if (!adminToken) {
+      alert('Admin session missing. Please log in again.');
+      onLogout();
+      return;
+    }
 
-    weddings[index].status = weddings[index].status === 'active' ? 'cancelled' : 'active';
-    localStorage.setItem('mcn_weddings', JSON.stringify(weddings));
-    setAllBookings(weddings);
+    const current = allBookings.find((w) => w.id === bookingId);
+    if (!current) return;
+    const cur = String(current.status || '').toLowerCase();
+    const nextStatus = cur === 'active' ? 'cancelled' : 'active';
+
+    saveBooking(bookingId, { status: nextStatus }, 'admin', 'admin', adminToken)
+      .then((res: any) => {
+        if (!res?.ok) {
+          alert(res?.error || 'Save failed');
+          return;
+        }
+        setAllBookings((prev) => prev.map((b) => (b.id === bookingId ? res.booking : b)));
+      })
+      .catch((err) => alert(err?.message || 'Save failed'));
   };
 
   const filteredBookings = allBookings.filter(b => 

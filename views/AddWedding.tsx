@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { View, WeddingBooking } from '../types';
+import { createBooking } from '../services/bookingService';
 
 const AddWedding: React.FC<{ onNavigate: (v: View) => void }> = ({ onNavigate }) => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -79,13 +80,25 @@ const AddWedding: React.FC<{ onNavigate: (v: View) => void }> = ({ onNavigate })
       tablePlan: {}
     };
 
-    const existing = JSON.parse(localStorage.getItem('mcn_weddings') || '[]');
-    localStorage.setItem('mcn_weddings', JSON.stringify([...existing, newWedding]));
-    
-    sessionStorage.setItem('last_created_wedding', JSON.stringify(newWedding));
-    sessionStorage.setItem('temp_access_pass', formData.customPassword);
+    const adminToken = sessionStorage.getItem('mcn_admin_token') || '';
+    if (!adminToken) {
+      alert('Admin session missing. Please log in again.');
+      onNavigate(View.ADMIN_DASHBOARD);
+      return;
+    }
 
-    onNavigate(View.BOOKING_CONFIRMATION);
+    createBooking({ ...newWedding, createdBy: 'admin' }, adminToken)
+      .then((res: any) => {
+        if (!res?.ok) {
+          alert(res?.error || 'Create failed');
+          return;
+        }
+
+        sessionStorage.setItem('last_created_wedding', JSON.stringify(res.booking));
+        sessionStorage.setItem('temp_access_pass', formData.customPassword);
+        onNavigate(View.BOOKING_CONFIRMATION);
+      })
+      .catch((err) => alert(err?.message || 'Create failed'));
   };
 
   return (

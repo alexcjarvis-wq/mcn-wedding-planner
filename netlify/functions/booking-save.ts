@@ -1,60 +1,37 @@
 import type { Handler } from "@netlify/functions";
-import jwt from "jsonwebtoken";
 import { getBooking, upsertBooking, appendAudit } from "./shared/storage";
+import { verifyAdmin } from "./shared/auth";
 
-function getBearerToken(event: any): string | null {
-  const auth = event.headers?.authorization || event.headers?.Authorization;
-  if (!auth) return null;
-  if (!auth.startsWith("Bearer ")) return null;
-  return auth.replace("Bearer ", "");
-}
-
-function verifyAdminToken(event: any): boolean {
-  try {
-    const token = getBearerToken(event);
-    if (!token) return false;
-
-    const secret = process.env.ADMIN_JWT_SECRET;
-    if (!secret) return false;
-
-    jwt.verify(token, secret);
-    return true;
-  } catch {
-    return false;
-  }
+function json(statusCode: number, body: any) {
+  return {
+    statusCode,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  };
 }
 
 export const handler: Handler = async (event) => {
   try {
     if (event.httpMethod !== "POST") {
-      return { statusCode: 405, body: "Method not allowed" };
+      return json(405, { ok: false, error: "METHOD_NOT_ALLOWED" });
     }
 
     const body = JSON.parse(event.body || "{}");
     const { id, patch, actorType = "guest", actorId = "unknown" } = body;
 
     if (!id) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ ok: false, error: "Missing booking id" }),
-      };
+      return json(400, { ok: false, error: "MISSING_ID" });
     }
 
-    const isAdmin = verifyAdminToken(event);
+    const isAdmin = verifyAdmin(event).ok;
 
     const existing = await getBooking(id);
 
     if (existing?.locked && !isAdmin) {
-      return {
-        statusCode: 403,
-        body: JSON.stringify({ ok: false, error: "Booking is locked" }),
-      };
+      return json(403, { ok: false, error: "LOCKED" });
     }
 
-    const updated = await upsertBooking(id, {
-      ...existing,
-      ...patch,
-    });
+    const updated = await upsertBooking(id, { ...patch });
 
     await appendAudit({
       bookingId: id,
@@ -65,18 +42,8 @@ export const handler: Handler = async (event) => {
       ip: event.headers["x-forwarded-for"] || "",
     });
 
-    return {
-      statusCode: 200,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ok: true, booking: updated }),
-    };
+    return json(200, { ok: true, booking: updated });
   } catch (err: any) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        ok: false,
-        error: err?.message || "Server error",
-      }),
-    };
+    return json(500, { ok: false, error: err?.message || "SERVER_ERROR" });
   }
 };

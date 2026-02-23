@@ -1,52 +1,57 @@
 import type { Handler } from "@netlify/functions";
+import { requireAdmin } from "./shared/auth";
+import { getBooking, upsertBooking, appendAudit } from "./shared/storage";
 
-type ApprovePayload = {
-  bookingId: string;
-  approvedBy?: string;
-};
+function json(statusCode: number, body: any) {
+  return {
+    statusCode,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  };
+}
 
 export const handler: Handler = async (event) => {
   if (event.httpMethod !== "POST") {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({ ok: false, error: "Method not allowed" }),
-    };
+    return json(405, { ok: false, error: "METHOD_NOT_ALLOWED" });
   }
 
+  const auth = requireAdmin(event);
+  if (!auth.ok) return auth.response;
+
   try {
-    const body: ApprovePayload = event.body ? JSON.parse(event.body) : (null as any);
+    const body = event.body ? JSON.parse(event.body) : {};
+    const id = String(body?.id || body?.bookingId || "").trim();
+    const approvedBy = String(body?.approvedBy || "admin").trim();
 
-    const bookingId = body?.bookingId;
-    const approvedBy = body?.approvedBy || "Guest";
-
-    if (!bookingId) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ ok: false, error: "Missing bookingId" }),
-      };
+    if (!id) {
+      return json(400, { ok: false, error: "MISSING_ID" });
     }
 
-    const approvedAt = Date.now();
+    const existing = await getBooking(id);
+    if (!existing) {
+      return json(404, { ok: false, error: "NOT_FOUND" });
+    }
 
-    // TEMP: We are not persisting yet, we are returning what approval would set.
-    // Next step: load existing booking from storage, update it, then save.
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        ok: true,
-        bookingId,
-        patch: {
-          status: "APPROVED",
-          locked: true,
-          approvedAt,
-          approvedBy,
-        },
-      }),
+    const patch = {
+      status: "APPROVED",
+      locked: true,
+      approvedAt: Date.now(),
+      approvedBy,
     };
-  } catch (error) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ ok: false, error: "Server error" }),
-    };
+
+    const updated = await upsertBooking(id, patch);
+
+    await appendAudit({
+      bookingId: id,
+      actorType: "admin",
+      actorId: approvedBy,
+      action: "approve",
+      diff: patch,
+      ip: event.headers?.["x-forwarded-for"] || "",
+    });
+
+    return json(200, { ok: true, booking: updated });
+  } catch (err: any) {
+    return json(500, { ok: false, error: err?.message || "SERVER_ERROR" });
   }
 };
