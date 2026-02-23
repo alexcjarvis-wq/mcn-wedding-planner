@@ -86,9 +86,13 @@ export interface GuestSession {
 
 // Your app imports this in App.tsx.
 // Keep it minimal. Server fills id and timestamps.
-export const defaultBookingData: Pick<WeddingBooking, "locked" | "status" | "data"> =
-  {
-    locked: false,
-    status: "draft",
-    data: {},
-  };
+export const defaultBookingData: Pick<WeddingBooking, "locked" | "status" | "data"> = {
+  locked: false,
+  status: "draft",
+  data: {
+    guests: [],
+    tables: [],
+    menu: {},
+    notes: "",
+  },
+};

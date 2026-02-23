@@ -12,15 +12,17 @@ export const handler: Handler = async (event) => {
     }
 
     // If booking doesn't exist yet, create an empty one.
-    let booking = await getBooking(id);
-    if (!booking) {
-      booking = await upsertBooking(id, {
-        id,
-        locked: false,
-        status: "draft",
-        data: {},
-      });
-    }
+    booking = await upsertBooking(id, {
+  id,
+  locked: false,
+  status: "draft",
+  data: {
+    guests: [],
+    tables: [],
+    menu: {},
+    notes: "",
+  },
+});
 
     return {
       statusCode: 200,

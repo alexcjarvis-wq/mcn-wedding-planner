@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, WeddingBooking } from '../types';
+import type { View, WeddingBooking } from '../types';
 
 interface LandingPageProps {
   onNavigate: (view: View) => void;
