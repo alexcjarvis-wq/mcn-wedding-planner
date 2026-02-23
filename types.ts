@@ -58,18 +58,6 @@ export interface GuestSession {
   guestId?: string;
 }
 
-export const defaultBookingData: WeddingBooking = {
-  id: "",
-  coupleName: "",
-  venue: "",
-  weddingDate: "",
-  locked: false,
-  status: "draft",
-  data: {},
-  createdAt: "",
-  updatedAt: "",
-};
-
 export const defaultBookingData = {
 id: "",
 coupleName: "",
