@@ -24,6 +24,24 @@ type StoredGuestSession = {
   role: string;
 };
 
+function normalizeBooking(b: any): WeddingBooking {
+  const base: any = defaultBookingData as any;
+  const baseData = base && base.data ? base.data : { guests: [], tables: [], menu: {}, notes: "" };
+
+  return {
+    ...(base as any),
+    ...(b || {}),
+    data: {
+      guests: [],
+      tables: [],
+      menu: {},
+      notes: "",
+      ...(baseData || {}),
+      ...((b && b.data) ? b.data : {}),
+    },
+  } as WeddingBooking;
+}
+
 export default function App() {
   const [view, setView] = useState<View>("LANDING" as any);
   const [selectedBooking, setSelectedBooking] = useState<WeddingBooking | null>(null);
@@ -36,6 +54,7 @@ export default function App() {
 
     const raw = sessionStorage.getItem("mcn_guest_session");
     if (!raw) return;
+
     let s: StoredGuestSession | null = null;
     try {
       s = JSON.parse(raw);
@@ -47,7 +66,7 @@ export default function App() {
     getBooking(s.bookingId)
       .then((res: any) => {
         if (!res?.ok || !res?.booking) return;
-        setSelectedBooking({ ...defaultBookingData, ...res.booking });
+        setSelectedBooking(normalizeBooking(res.booking));
         setGuestSession({ guestName: s!.guestName, role: s!.role } as any);
         setView("BRIDE_GROOM_PORTAL" as any);
       })
@@ -80,26 +99,26 @@ export default function App() {
     const booking = res.booking as WeddingBooking;
 
     const surnameOk =
-      String(booking.surname || "").trim().toLowerCase() ===
+      String((booking as any).surname || "").trim().toLowerCase() ===
       String(surname || "").trim().toLowerCase();
-    const passOk = booking.passwordHash === mockHash(password);
+    const passOk = (booking as any).passwordHash === mockHash(password);
 
     if (!surnameOk || !passOk) throw new Error("Incorrect details");
 
     const session: StoredGuestSession = {
       bookingId: booking.id,
-      guestName: booking.coupleName1 || "Guest",
+      guestName: (booking as any).coupleName1 || "Guest",
       role: "couple",
     };
 
     sessionStorage.setItem("mcn_guest_session", JSON.stringify(session));
-    setSelectedBooking({ ...defaultBookingData, ...booking });
+    setSelectedBooking(normalizeBooking(booking));
     setGuestSession({ guestName: session.guestName, role: session.role } as any);
     setView("BRIDE_GROOM_PORTAL" as any);
   };
 
   const handleAdminSelectBooking = (booking: WeddingBooking) => {
-    setSelectedBooking({ ...defaultBookingData, ...booking });
+    setSelectedBooking(normalizeBooking(booking));
     setView("BRIDE_GROOM_PORTAL" as any);
   };
 
