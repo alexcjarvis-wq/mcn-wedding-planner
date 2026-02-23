@@ -195,16 +195,7 @@ export default function App() {
         <LandingPage
           onNavigate={(v: View) => {
             // If user clicks Admin areas, require a real token first
-            if (
-              v === ("ADMIN_DASHBOARD" as View) ||
-              v === ("ENQUIRY_MANAGER" as View) ||
-              v === ("KITCHEN_OPS" as View)
-            ) {
-              if (!getAdminToken()) {
-                alert("Enter staff code first.");
-                return;
-              }
-            }
+            
             go(v);
           }}
         />

@@ -25,11 +25,11 @@ export default function LandingPage({
         </button>
 
         <button
-          onClick={() => onNavigate("ADMIN_DASHBOARD" as any)}
-          className="px-8 py-6 bg-[#3e2f26] text-white rounded-xl shadow-lg hover:opacity-90 transition"
-        >
-          Staff Access
-        </button>
+  onClick={() => onNavigate("ADMIN_DASHBOARD")}
+  className="px-8 py-6 bg-[#3e2f26] text-white rounded-xl shadow-lg hover:opacity-90 transition"
+>
+  Staff Access
+</button>
 
       </div>
     </div>
