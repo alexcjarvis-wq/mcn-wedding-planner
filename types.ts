@@ -11,15 +11,13 @@ export type View =
 | "ADD_WEDDING"
 | "BOOKING_CONFIRMATION";
 
-export type WeddingBooking = {
-id: string;
-createdAt: string;
-updatedAt: string;
-locked: boolean;
-status: "draft" | "submitted" | "approved" | "cancelled";
-venue?: string;
-data: Record<string, any>;
-};
+export enum View {
+LANDING = "LANDING",
+ADMIN_DASHBOARD = "ADMIN_DASHBOARD",
+COUPLE_PORTAL = "COUPLE_PORTAL",
+ADD_WEDDING = "ADD_WEDDING",
+BOOKING_CONFIRMATION = "BOOKING_CONFIRMATION",
+}
 
 export const defaultBookingData: WeddingBooking["data"] = {
 venue: "",
