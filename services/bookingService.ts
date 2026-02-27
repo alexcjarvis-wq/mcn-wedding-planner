@@ -121,3 +121,19 @@ export async function listAudit(bookingId?: string, limit = 100, adminToken?: st
   q.set("limit", String(limit));
   return apiGet<{ items: AnyObj[] }>(`/.netlify/functions/booking-audit-list?${q.toString()}`, token);
 }
+
+export async function approveBooking(id: string, approvedBy: string) {
+  const res = await fetch("/.netlify/functions/booking-approve", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, approvedBy }),
+  });
+
+  const json = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    return { ok: false, error: json?.error || `HTTP ${res.status}` };
+  }
+
+  return json;
+}
