@@ -86,14 +86,6 @@ export async function saveBooking(
   );
 }
 
-export async function approveBooking(id: string, approvedBy: string, adminToken?: string) {
-  const token = adminToken || getStoredAdminToken();
-  return apiPost<{ booking: AnyObj }>(
-    "/.netlify/functions/booking-approve",
-    { id, approvedBy },
-    token
-  );
-}
 
 export async function unlockBooking(id: string, unlockedBy: string, adminToken?: string) {
   const token = adminToken || getStoredAdminToken();
